@@ -1,4 +1,12 @@
-cmake_minimum_required(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.9)
 
-project(cfdata)
-add_executable(${PROJECT_NAME} "main.cpp")
+PROJECT(cfdata)
+SET(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+ADD_SUBDIRECTORY(third-party/curlpp)
+
+ADD_EXECUTABLE(cfdata main.cpp)
+TARGET_LINK_LIBRARIES(cfdata curlpp)
+
+TARGET_INCLUDE_DIRECTORIES(cfdata PRIVATE third-party/curlpp/include)
