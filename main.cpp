@@ -1,4 +1,5 @@
 #include "entities.hpp"
+#include "timer.hpp"
 
 #include <experimental/optional>
 #include <iostream>
@@ -55,6 +56,8 @@ optional<string> getPage(RequestPage const& page)
 
 int main()
 {
+    Timer tmr;
+    tmr.reset();
     auto totalPages = size_t{1};
     auto currentPage = size_t{1};
 
@@ -66,6 +69,8 @@ int main()
         ++currentPage;
         cout << currentPage << "/" << totalPages << '\n';
     }
+
+    cout << tmr.elapsed() << '\n';
 
     return 0;
 }

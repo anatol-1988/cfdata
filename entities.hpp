@@ -1,9 +1,10 @@
 #pragma once
-#include <string>
 #include <experimental/optional>
 #include <nlohmann/json.hpp>
+#include <string>
 
-namespace entities {
+namespace entities
+{
 
 using std::string;
 using std::vector;
@@ -16,7 +17,7 @@ struct Pagination {
     size_t totalCompetitors;
 };
 
-void from_json(json const &j, Pagination& p)
+void from_json(json const& j, Pagination& p)
 {
     p.currentPage = j.at("currentPage").get<size_t>();
     p.totalPages = j.at("totalPages").get<size_t>();
@@ -34,7 +35,7 @@ struct Entrant {
     string weight;
 };
 
-void from_json(json const &j, Entrant& e)
+void from_json(json const& j, Entrant& e)
 {
     e.competitorId = j.at("competitorId").get<string>();
     e.competitorName = j.at("competitorName").get<string>();
@@ -56,7 +57,7 @@ struct Score {
     string breakdown;
 };
 
-void from_json(json const &j, Score& s)
+void from_json(json const& j, Score& s)
 {
     s.ordinal = j.at("ordinal").get<size_t>();
     s.rank = j.at("rank").get<string>();
@@ -74,7 +75,7 @@ struct Row {
     string overallScore;
 };
 
-void from_json(json const &j, Row& r)
+void from_json(json const& j, Row& r)
 {
     r.entrant = j.at("entrant").get<Entrant>();
     r.scores = j.at("scores").get<vector<Score> >();
@@ -87,7 +88,7 @@ struct Page {
     vector<Row> leaderboardRows;
 };
 
-void from_json(json const &j, Page& p)
+void from_json(json const& j, Page& p)
 {
     p.pagination = j.at("pagination").get<Pagination>();
     p.leaderboardRows = j.at("leaderboardRows").get<vector<Row> >();
