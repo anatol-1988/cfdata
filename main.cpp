@@ -2,6 +2,7 @@
 #include "timer.hpp"
 
 #include <experimental/optional>
+#include <future>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -16,9 +17,20 @@ using std::make_unique;
 using std::move;
 using std::string;
 using std::to_string;
+using std::atomic_size_t;
+using std::atomic_bool;
+using std::mutex;
 using std::out_of_range;
+using std::async;
+using std::launch;
+using std::ref;
+using std::cref;
+using std::future;
+using std::vector;
 using std::experimental::optional;
 using nlohmann::json;
+
+auto constexpr maxThreads = size_t{20};
 
 struct RequestPage {
     const size_t _page;
@@ -28,10 +40,10 @@ struct RequestPage {
     {
     }
 
-    string toString() const { return to_string(_page); }
+    auto toString() const -> string { return to_string(_page); }
 };
 
-optional<string> getPage(RequestPage const& page)
+auto getPage(RequestPage const& page) -> optional<string>
 {
     auto myUrl = make_unique<curlpp::options::Url>(
         "https://games.crossfit.com/competitions/api/v1/competitions/open/2018/"
@@ -54,23 +66,35 @@ optional<string> getPage(RequestPage const& page)
     return os.str();
 }
 
-int main()
+auto getAnotherPage(atomic_size_t& current, atomic_size_t const& total) -> void
+{
+    while (current < total) {
+        auto const response = getPage(current++);
+        auto const j3 = json::parse(*response);
+        const auto page = j3.get<entities::Page>();
+        cout << page.pagination.currentPage << "/" << total << '\n';
+    }
+}
+
+auto main() -> int
 {
     Timer tmr;
     tmr.reset();
-    auto totalPages = size_t{1};
-    auto currentPage = size_t{1};
+    auto currentPage = atomic_size_t{1};
+    auto totalPages = atomic_size_t{
+        json::parse(*getPage(1)).get<entities::Page>().pagination.totalPages};
+    auto futs = vector<future<void>>{};
 
-    while (currentPage <= totalPages) {
-        const auto j3 = json::parse(*getPage(1));
-        const auto page = j3.get<entities::Page>();
-        //cout << j3.dump();
-        totalPages = page.pagination.totalPages;
-        ++currentPage;
-        cout << currentPage << "/" << totalPages << '\n';
+    for (auto i = size_t{0}; i < maxThreads; ++i) {
+        auto fut = async(launch::async, getAnotherPage, ref(currentPage),
+                         cref(totalPages));
+        futs.push_back(move(fut));
+    }
+
+    for (auto const& f : futs) {
+        f.wait();
     }
 
     cout << tmr.elapsed() << '\n';
-
     return 0;
 }

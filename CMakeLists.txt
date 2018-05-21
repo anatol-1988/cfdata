@@ -7,7 +7,7 @@ SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 ADD_SUBDIRECTORY(third-party/json)
 ADD_SUBDIRECTORY(third-party/curlpp)
 
-ADD_EXECUTABLE(cfdata main.cpp)
+ADD_EXECUTABLE(cfdata main.cpp entities.hpp timer.hpp)
 TARGET_LINK_LIBRARIES(cfdata curlpp)
 
 TARGET_INCLUDE_DIRECTORIES(cfdata PRIVATE third-party/curlpp/include)

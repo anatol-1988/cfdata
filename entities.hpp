@@ -54,7 +54,7 @@ struct Score {
     string scoreDisplay;
     string scaled;
     optional<size_t> time;
-    string breakdown;
+    optional<string> breakdown;
 };
 
 void from_json(json const& j, Score& s)
@@ -64,8 +64,13 @@ void from_json(json const& j, Score& s)
     s.score = j.at("score").get<string>();
     s.scoreDisplay = j.at("scoreDisplay").get<string>();
     s.scaled = j.at("scaled").get<string>();
-    s.time = j.find("time") == j.end() ? optional<size_t>{} : j.at("time").get<size_t>();
-    s.breakdown = j.at("breakdown").get<string>();
+    // s.time = j.find("time") == j.end() ? optional<size_t>{}
+    //                                   : (j.at("time").is_number_unsigned() ?
+    //                                   j.at("time").get<size_t>() :
+    //                                   stol(j.at("time").get<string>()));
+    s.breakdown = j.find("breakdown") == j.end()
+        ? optional<string>{}
+        : j.at("breakdown").get<string>();
 }
 
 struct Row {
@@ -78,7 +83,7 @@ struct Row {
 void from_json(json const& j, Row& r)
 {
     r.entrant = j.at("entrant").get<Entrant>();
-    r.scores = j.at("scores").get<vector<Score> >();
+    r.scores = j.at("scores").get<vector<Score>>();
     r.overallRank = j.at("overallRank").get<string>();
     r.overallScore = j.at("overallScore").get<string>();
 }
@@ -91,6 +96,6 @@ struct Page {
 void from_json(json const& j, Page& p)
 {
     p.pagination = j.at("pagination").get<Pagination>();
-    p.leaderboardRows = j.at("leaderboardRows").get<vector<Row> >();
+    p.leaderboardRows = j.at("leaderboardRows").get<vector<Row>>();
 }
 }
