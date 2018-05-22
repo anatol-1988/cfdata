@@ -9,6 +9,7 @@ namespace entities
 using std::string;
 using std::vector;
 using std::experimental::optional;
+using std::experimental::nullopt;
 using nlohmann::json;
 
 struct Pagination {
@@ -64,10 +65,18 @@ void from_json(json const& j, Score& s)
     s.score = j.at("score").get<string>();
     s.scoreDisplay = j.at("scoreDisplay").get<string>();
     s.scaled = j.at("scaled").get<string>();
-    // s.time = j.find("time") == j.end() ? optional<size_t>{}
-    //                                   : (j.at("time").is_number_unsigned() ?
-    //                                   j.at("time").get<size_t>() :
-    //                                   stol(j.at("time").get<string>()));
+
+    if (j.find("time") == j.end())
+        s.time = nullopt;
+    else if (j.at("time").is_number_unsigned())
+        s.time = j.at("time").get<size_t>();
+    else if (j.at("time").is_string()) {
+        auto const str = j.at("time").get<string>();
+
+        if (!str.empty())
+            s.time = stoul(str);
+    }
+
     s.breakdown = j.find("breakdown") == j.end()
         ? optional<string>{}
         : j.at("breakdown").get<string>();

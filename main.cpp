@@ -28,9 +28,10 @@ using std::cref;
 using std::future;
 using std::vector;
 using std::experimental::optional;
+using std::experimental::nullopt;
 using nlohmann::json;
 
-auto constexpr maxThreads = size_t{20};
+auto constexpr maxThreads = size_t{10};
 
 struct RequestPage {
     const size_t _page;
@@ -59,6 +60,7 @@ auto getPage(RequestPage const& page) -> optional<string>
         myRequest.perform();
     } catch (curlpp::RuntimeError& e) {
         cout << e.what() << endl;
+        return nullopt;
     } catch (curlpp::LogicError& e) {
         cout << e.what() << endl;
     }
@@ -68,11 +70,16 @@ auto getPage(RequestPage const& page) -> optional<string>
 
 auto getAnotherPage(atomic_size_t& current, atomic_size_t const& total) -> void
 {
-    while (current < total) {
+    while (current <= total) {
         auto const response = getPage(current++);
-        auto const j3 = json::parse(*response);
-        const auto page = j3.get<entities::Page>();
-        cout << page.pagination.currentPage << "/" << total << '\n';
+
+        try {
+            auto const j3 = json::parse(*response);
+            const auto page = j3.get<entities::Page>();
+            cout << page.pagination.currentPage << "/" << total << '\n';
+        } catch (...) {
+            cout << "Parse error\n";
+        }
     }
 }
 
