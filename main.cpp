@@ -1,6 +1,8 @@
 #include "entities.hpp"
+#include "queue.hpp"
 #include "timer.hpp"
 
+#include <condition_variable>
 #include <experimental/optional>
 #include <future>
 #include <iostream>
@@ -13,9 +15,11 @@
 
 using std::cout;
 using std::endl;
+using std::ostream;
 using std::make_unique;
 using std::move;
 using std::string;
+using std::quoted;
 using std::to_string;
 using std::atomic_size_t;
 using std::atomic_bool;
@@ -27,6 +31,8 @@ using std::ref;
 using std::cref;
 using std::future;
 using std::vector;
+using std::condition_variable;
+using std::unique_lock;
 using std::experimental::optional;
 using std::experimental::nullopt;
 using nlohmann::json;
@@ -59,14 +65,20 @@ auto getPage(RequestPage const& page) -> optional<string>
     try {
         myRequest.perform();
     } catch (curlpp::RuntimeError& e) {
-        cout << e.what() << endl;
         return nullopt;
     } catch (curlpp::LogicError& e) {
-        cout << e.what() << endl;
+        return nullopt;
     }
 
     return os.str();
 }
+
+auto m = mutex{};
+auto cv = condition_variable{};
+auto newPage = false;
+auto queue = Queue{};
+auto printPage = size_t{1};
+auto totalPages = atomic_size_t{0};
 
 auto getAnotherPage(atomic_size_t& current, atomic_size_t const& total) -> void
 {
@@ -76,9 +88,68 @@ auto getAnotherPage(atomic_size_t& current, atomic_size_t const& total) -> void
         try {
             auto const j3 = json::parse(*response);
             const auto page = j3.get<entities::Page>();
-            cout << page.pagination.currentPage << "/" << total << '\n';
+            // cout << page.pagination.currentPage << "/" << total << '\n';
+            queue.push_back(page);
         } catch (...) {
             cout << "Parse error\n";
+        }
+
+        newPage = true;
+        cv.notify_one();
+    }
+}
+
+auto operator<<(ostream& out, optional<size_t> const& opt) -> ostream&
+{
+    if (opt)
+        cout << *opt;
+    else
+        cout << "";
+
+    return out;
+}
+
+auto operator<<(ostream& out, entities::Score const& score) -> ostream&
+{
+    out << quoted(score.scoreDisplay) << ", " << score.scaled << ", "
+        << score.time;
+    return out;
+}
+
+auto printOnePage(Page const& page) -> void
+{
+    for (auto const& entrant : page.leaderboardRows) {
+        cout << page.pagination.currentPage << ", "
+             << quoted(entrant.entrant.competitorId) << ", "
+             << quoted(entrant.entrant.competitorName) << ", "
+             << quoted(entrant.entrant.divisionId) << ", ";
+
+        auto i = size_t{1};
+
+        for (auto const &score: entrant.scores) {
+            if (score.ordinal == i) {
+                cout << ", " << score;
+            } else {
+                cout << ", , , , ,";
+            }
+            ++i;
+        }
+
+        cout << "\n";
+    }
+}
+
+auto printPages() -> void
+{
+    while (printPage <= totalPages) {
+        unique_lock<mutex> lk{m};
+        cv.wait(lk, [] { return newPage; });
+        auto page = queue.get(printPage);
+
+        while (page) {
+            printOnePage(*page);
+            ++printPage;
+            page = queue.get(printPage);
         }
     }
 }
@@ -88,8 +159,8 @@ auto main() -> int
     Timer tmr;
     tmr.reset();
     auto currentPage = atomic_size_t{1};
-    auto totalPages = atomic_size_t{
-        json::parse(*getPage(1)).get<entities::Page>().pagination.totalPages};
+    totalPages
+        = json::parse(*getPage(1)).get<entities::Page>().pagination.totalPages;
     auto futs = vector<future<void>>{};
 
     for (auto i = size_t{0}; i < maxThreads; ++i) {
@@ -98,10 +169,13 @@ auto main() -> int
         futs.push_back(move(fut));
     }
 
+    auto fut = async(launch::async, printPages);
+
     for (auto const& f : futs) {
         f.wait();
     }
 
+    fut.wait();
     cout << tmr.elapsed() << '\n';
     return 0;
 }

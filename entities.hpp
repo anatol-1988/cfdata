@@ -31,6 +31,7 @@ struct Entrant {
     string status;
     string postCompStatus;
     string gender;
+    string divisionId;
     string age;
     string height;
     string weight;
@@ -43,6 +44,7 @@ void from_json(json const& j, Entrant& e)
     e.status = j.at("status").get<string>();
     e.postCompStatus = j.at("postCompStatus").get<string>();
     e.gender = j.at("gender").get<string>();
+    e.divisionId = j.at("divisionId").get<string>();
     e.age = j.at("age").get<string>();
     e.height = j.at("height").get<string>();
     e.weight = j.at("weight").get<string>();
