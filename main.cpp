@@ -10,6 +10,8 @@
 #include <sstream>
 #include <string>
 
+#include <sys/stat.h>
+
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 #include <curlpp/cURLpp.hpp>
@@ -18,6 +20,9 @@ using std::cout;
 using std::endl;
 using std::ostream;
 using std::ofstream;
+using std::ifstream;
+using std::runtime_error;
+using std::istreambuf_iterator;
 using std::make_unique;
 using std::move;
 using std::string;
@@ -38,6 +43,7 @@ using std::unique_lock;
 using std::experimental::optional;
 using std::experimental::nullopt;
 using nlohmann::json;
+using nlohmann::detail::parse_error;
 
 auto constexpr maxThreads = size_t{10};
 
@@ -51,6 +57,11 @@ struct RequestPage {
 
     auto toString() const -> string { return to_string(_page); }
 };
+
+auto mkdir(string const &name) -> void
+{
+    mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+}
 
 auto requestPage(RequestPage const &page) -> optional<string>
 {
@@ -74,7 +85,40 @@ auto requestPage(RequestPage const &page) -> optional<string>
         return nullopt;
     }
 
-    return os.str();
+    auto const str = os.str();
+
+    try {
+        auto const j3 = json::parse(str);
+        auto fout = ofstream{"json/" + page.toString() + ".json"};
+        fout << j3.dump();
+        return str;
+    } catch (...) {
+        cout << "Error during parsing " << page.toString() << " page\n";
+        cout << str << "\n";
+        return nullopt;
+    }
+}
+
+auto fileExist(string const &name) -> bool
+{
+    auto const f = ifstream{name.c_str()};
+    return f.good();
+}
+
+auto fetchPage(RequestPage const &page) -> optional<string>
+{
+    auto const filename = "json/" + page.toString() + ".json";
+
+    if (fileExist(filename)) {
+        cout << "Reading " << filename << " file\n";
+        auto f = ifstream{filename.c_str()};
+        auto const str
+            = string{istreambuf_iterator<char>{f}, istreambuf_iterator<char>{}};
+        return str;
+    } else {
+        cout << "Requesting " << page.toString() << " page\n";
+        return requestPage(page);
+    }
 }
 
 static auto m = mutex{};
@@ -87,17 +131,14 @@ static auto totalPages = atomic_size_t{0};
 auto getAnotherPage(atomic_size_t &current, atomic_size_t const &total) -> void
 {
     while (current <= total) {
-        auto const response = requestPage(current++);
+        auto const response = fetchPage(current++);
 
         try {
             auto const j3 = json::parse(*response);
-            auto out = ofstream{to_string(current) + ".json"};
-            out << j3.dump();
-            // const auto page = j3.get<entities::Page>();
-            // cout << page.pagination.currentPage << "/" << total << '\n';
-            // queue.push_back(page);
-        } catch (...) {
-            cout << "Parse error\n";
+            const auto page = j3.get<entities::Page>();
+            queue.push_back(page);
+        } catch (parse_error const &error) {
+            cout << error.what() << "\n";
         }
 
         newPage = true;
@@ -115,10 +156,32 @@ auto operator<<(ostream &out, optional<size_t> const &opt) -> ostream &
     return out;
 }
 
+auto getScore(string const &str) -> string
+{
+    if (str.empty())
+        return ",";
+
+    auto copy = str;
+
+    if (auto const pos = copy.rfind(" - s"); pos != string::npos)
+        copy.resize(pos);
+
+    if (auto const pos = copy.rfind(" lb"); pos != string::npos) {
+        copy.resize(pos);
+        return copy + ", ";
+    }
+
+    if (auto const pos = copy.rfind(" reps"); pos != string::npos) {
+        copy.resize(pos);
+        return copy + ", ";
+    }
+
+    return ", " + copy;
+}
+
 auto operator<<(ostream &out, entities::Score const &score) -> ostream &
 {
-    out << quoted(score.scoreDisplay) << ", " << score.scaled << ", "
-        << score.time;
+    out << getScore(score.scoreDisplay) << ", " << score.scaled << ", ";
     return out;
 }
 
@@ -134,9 +197,9 @@ auto printOnePage(ostream &out, Page const &page) -> void
 
         for (auto const &score : entrant.scores) {
             if (score.ordinal == i)
-                out << ", " << score;
+                out << score;
             else
-                out << ", , , , ,";
+                out << ", ";
 
             ++i;
         }
@@ -164,6 +227,7 @@ auto main() -> int
 {
     Timer tmr;
     tmr.reset();
+    mkdir("json");
     auto currentPage = atomic_size_t{1};
     totalPages = json::parse(*requestPage(1))
                      .get<entities::Page>()
@@ -176,7 +240,7 @@ auto main() -> int
         futs.push_back(move(fut));
     }
 
-    auto out = ofstream{"out.txt"};
+    auto out = ofstream{"cfopen2018.csv"};
     auto fut = async(launch::async, printPages, ref(out));
 
     for (auto const &f : futs)

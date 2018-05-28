@@ -87,16 +87,20 @@ void from_json(json const &j, Score &s)
 struct Row {
     Entrant entrant;
     vector<Score> scores;
-    string overallRank;
-    string overallScore;
+    optional<string> overallRank;
+    optional<string> overallScore;
 };
 
 void from_json(json const &j, Row &r)
 {
     r.entrant = j.at("entrant").get<Entrant>();
     r.scores = j.at("scores").get<vector<Score>>();
-    r.overallRank = j.at("overallRank").get<string>();
-    r.overallScore = j.at("overallScore").get<string>();
+    r.overallRank = j.find("overallRank") != cend(j)
+        ? j.at("overallRank").get<string>()
+        : optional<string>{};
+    r.overallScore = j.find("overallScore") != cend(j)
+        ? j.at("overallScore").get<string>()
+        : optional<string>{};
 }
 
 struct Page {
