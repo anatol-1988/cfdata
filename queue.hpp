@@ -1,6 +1,7 @@
 #pragma once
 #include "entities.hpp"
 #include <experimental/optional>
+#include <mutex>
 
 using std::mutex;
 using std::vector;

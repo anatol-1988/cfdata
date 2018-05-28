@@ -7,7 +7,7 @@ SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 ADD_SUBDIRECTORY(third-party/curlpp)
 
 ADD_EXECUTABLE(cfdata main.cpp entities.hpp timer.hpp queue.hpp)
-TARGET_LINK_LIBRARIES(cfdata curlpp)
+TARGET_LINK_LIBRARIES(cfdata curlpp pthread)
 
 TARGET_INCLUDE_DIRECTORIES(cfdata PRIVATE third-party/curlpp/include)
 TARGET_INCLUDE_DIRECTORIES(cfdata PRIVATE third-party/json/single_include)
