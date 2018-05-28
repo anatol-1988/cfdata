@@ -13,7 +13,7 @@ using entities::Page;
 class Queue
 {
 public:
-    auto push_back(Page const& page) -> void
+    auto push_back(Page const &page) -> void
     {
         lock_guard<mutex> lock{_mutex};
         _pages.push_back(page);
@@ -23,7 +23,7 @@ public:
     {
         lock_guard<mutex> lock{_mutex};
         auto const it
-            = find_if(cbegin(_pages), cend(_pages), [index](auto const& p) {
+            = find_if(cbegin(_pages), cend(_pages), [index](auto const &p) {
                   return p.pagination.currentPage == index;
               });
 
