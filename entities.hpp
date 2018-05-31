@@ -12,7 +12,7 @@ using std::experimental::optional;
 using std::experimental::nullopt;
 using nlohmann::json;
 
-struct Pagination {
+struct Pagination final {
     size_t currentPage;
     size_t totalPages;
     size_t totalCompetitors;
@@ -25,7 +25,7 @@ void from_json(json const &j, Pagination &p)
     p.totalCompetitors = j.at("totalCompetitors").get<size_t>();
 }
 
-struct Entrant {
+struct Entrant final {
     string competitorId;
     string competitorName;
     string status;
@@ -50,7 +50,7 @@ void from_json(json const &j, Entrant &e)
     e.weight = j.at("weight").get<string>();
 }
 
-struct Score {
+struct Score final {
     size_t ordinal;
     string rank;
     string score;
@@ -84,7 +84,7 @@ void from_json(json const &j, Score &s)
         : j.at("breakdown").get<string>();
 }
 
-struct Row {
+struct Row final {
     Entrant entrant;
     vector<Score> scores;
     optional<string> overallRank;
@@ -103,7 +103,7 @@ void from_json(json const &j, Row &r)
         : optional<string>{};
 }
 
-struct Page {
+struct Page final {
     Pagination pagination;
     vector<Row> leaderboardRows;
 };
