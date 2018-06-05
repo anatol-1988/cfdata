@@ -16,34 +16,35 @@
 #include <curlpp/Options.hpp>
 #include <curlpp/cURLpp.hpp>
 
-using std::cout;
-using std::endl;
-using std::ostream;
-using std::ofstream;
-using std::ifstream;
-using std::runtime_error;
-using std::istreambuf_iterator;
-using std::make_unique;
-using std::move;
-using std::string;
-using std::quoted;
-using std::to_string;
-using std::atomic_size_t;
-using std::atomic_bool;
-using std::mutex;
-using std::out_of_range;
-using std::async;
-using std::launch;
-using std::ref;
-using std::cref;
-using std::future;
-using std::vector;
-using std::condition_variable;
-using std::unique_lock;
-using std::experimental::optional;
-using std::experimental::nullopt;
 using nlohmann::json;
 using nlohmann::detail::parse_error;
+using std::async;
+using std::atomic_bool;
+using std::atomic_size_t;
+using std::boolalpha;
+using std::condition_variable;
+using std::cout;
+using std::cref;
+using std::endl;
+using std::future;
+using std::ifstream;
+using std::istreambuf_iterator;
+using std::launch;
+using std::make_unique;
+using std::move;
+using std::mutex;
+using std::ofstream;
+using std::ostream;
+using std::out_of_range;
+using std::quoted;
+using std::ref;
+using std::runtime_error;
+using std::string;
+using std::to_string;
+using std::unique_lock;
+using std::vector;
+using std::experimental::nullopt;
+using std::experimental::optional;
 
 auto constexpr maxThreads = size_t{10};
 
@@ -159,7 +160,7 @@ auto operator<<(ostream &out, optional<size_t> const &opt) -> ostream &
 auto getScore(string const &str) -> string
 {
     if (str.empty())
-        return ",";
+        return "null,null";
 
     auto copy = str;
 
@@ -168,30 +169,32 @@ auto getScore(string const &str) -> string
 
     if (auto const pos = copy.rfind(" lb"); pos != string::npos) {
         copy.resize(pos);
-        return copy + ", ";
+        return copy + ",null";
     }
 
     if (auto const pos = copy.rfind(" reps"); pos != string::npos) {
         copy.resize(pos);
-        return copy + ", ";
+        return copy + ",null";
     }
 
-    return ", " + copy;
+    return "null," + copy;
 }
 
 auto operator<<(ostream &out, entities::Score const &score) -> ostream &
 {
-    out << getScore(score.scoreDisplay) << ", " << score.scaled << ", ";
+    auto const result = getScore(score.scoreDisplay);
+    out << (result.empty() or result == " " ? "null" : result) << ","
+        << boolalpha << score.scaled << ",";
     return out;
 }
 
 auto printOnePage(ostream &out, Page const &page) -> void
 {
     for (auto const &entrant : page.leaderboardRows) {
-        out << page.pagination.currentPage << ", "
-            << quoted(entrant.entrant.competitorId) << ", "
-            << quoted(entrant.entrant.competitorName) << ", "
-            << quoted(entrant.entrant.divisionId) << ", ";
+        out << page.pagination.currentPage << ","
+            << quoted(entrant.entrant.competitorId) << ","
+            << quoted(entrant.entrant.competitorName) << ","
+            << quoted(entrant.entrant.divisionId) << ",";
 
         auto i = size_t{1};
 
@@ -199,7 +202,7 @@ auto printOnePage(ostream &out, Page const &page) -> void
             if (score.ordinal == i)
                 out << score;
             else
-                out << ", ";
+                out << "null,null";
 
             ++i;
         }
