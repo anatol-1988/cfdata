@@ -1,7 +1,7 @@
 To  build  app  using  docker:
 
 ```sh
-docker  build  -t  cfdocker  .
+docker build -t cfdocker .
 ```
 
 To  run  app:
